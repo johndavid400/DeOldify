@@ -38,7 +38,9 @@ RUN pip install --upgrade pip \
 		youtube-dl>=2019.4.17 \
 		jupyterlab==1.2.4 \
 		opencv-python>=3.3.0.10 \
+		waitress>=2.1.1 \
 		fastai==1.0.51
+
 
 ADD . /data/
 

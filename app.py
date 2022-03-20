@@ -8,6 +8,7 @@ from flask import request
 from flask import jsonify
 from flask import send_file
 
+from waitress import serve
 
 from app_utils import download
 from app_utils import generate_random_filename
@@ -120,4 +121,6 @@ if __name__ == '__main__':
     port = 5000
     host = "0.0.0.0"
 
-    app.run(host=host, port=port, threaded=False)
+    #app.run(host=host, port=port, threaded=False)
+    #serve(app, host='0.0.0.0', port=5000)
+    serve(app, host=host, port=port)
