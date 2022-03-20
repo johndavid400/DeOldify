@@ -45,53 +45,63 @@ def allowed_file(filename):
 @app.route("/process", methods=["POST"])
 def process_image():
 
-    input_path = generate_random_filename(upload_directory,"jpeg")
-    output_path = os.path.join(results_img_directory, os.path.basename(input_path))
+    headers = request.headers
+    auth = headers.get("X-Api-Key")
+    api_key = os.getenv('COLORIZER_API_KEY')
 
-    try:
-        if 'file' in request.files:
-            file = request.files['file']
-            if allowed_file(file.filename):
-                file.save(input_path)
-            try:
-                render_factor = request.form.getlist('render_factor')[0]
-            except:
-                render_factor = 30
-            
-        else:
-            url = request.json["url"]
-            download(url, input_path)
-
-            try:
-                render_factor = request.json["render_factor"]
-            except:
-                render_factor = 30
-
-        result = None
+    # check X-Api-key header
+    if auth == api_key:
+        input_path = generate_random_filename(upload_directory,"jpeg")
+        output_path = os.path.join(results_img_directory, os.path.basename(input_path))
 
         try:
-            result = image_colorizer.get_transformed_image(input_path, render_factor=render_factor, post_process=True, watermarked=True)
+            if 'file' in request.files:
+                file = request.files['file']
+                if allowed_file(file.filename):
+                    file.save(input_path)
+                try:
+                    render_factor = request.form.getlist('render_factor')[0]
+                except:
+                    render_factor = 30
+            else:
+                url = request.json["url"]
+                download(url, input_path)
+
+                try:
+                    render_factor = request.json["render_factor"]
+                except:
+                    render_factor = 30
+
+            result = None
+
+            try:
+                result = image_colorizer.get_transformed_image(input_path, render_factor=render_factor, post_process=True, watermarked=True)
+            except:
+                convertToJPG(input_path)
+                result = image_colorizer.get_transformed_image(input_path, render_factor=render_factor, post_process=True, watermarked=True)
+            finally:
+                if result is not None:
+                    result.save(output_path, quality=95)
+                    result.close()
+
+            callback = send_file(output_path, mimetype='image/jpeg')
+            return callback, 200
+
         except:
-            convertToJPG(input_path)
-            result = image_colorizer.get_transformed_image(input_path, render_factor=render_factor, post_process=True, watermarked=True)
+            traceback.print_exc()
+            return {'message': 'input error'}, 400
+
         finally:
-            if result is not None:
-                result.save(output_path, quality=95)
-                result.close()
+            pass
+            clean_all([
+                input_path,
+                output_path
+                ])
 
-        callback = send_file(output_path, mimetype='image/jpeg')
-        return callback, 200
+    # not authorized
+    else:
+        return jsonify({"message": "ERROR: Unauthorized"}), 401
 
-    except:
-        traceback.print_exc()
-        return {'message': 'input error'}, 400
-
-    finally:
-        pass
-        clean_all([
-            input_path,
-            output_path
-            ])
 
 if __name__ == '__main__':
     global upload_directory
